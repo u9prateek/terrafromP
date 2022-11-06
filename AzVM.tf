@@ -42,7 +42,7 @@ resource "azurerm_linux_virtual_machine" "LinuxVM" {
   name                            = "LinuxVM"
   location                        = azurerm_resource_group.rg.location
   resource_group_name             = azurerm_resource_group.rg.name
-  size                            = "Standard_B1s"
+  size                            = "Standard_DS1_v2"
   admin_username                  = "prateek"
   admin_password                  = "Prateek@143"
   disable_password_authentication = false
@@ -58,7 +58,34 @@ resource "azurerm_linux_virtual_machine" "LinuxVM" {
     storage_account_type = "Standard_LRS"
 
   }
-  custom_data = file("C:\\Users\\pupadhyay23\\OneDrive - DXC Production\\Documents\\Zoom\\Python Practice\\Terraform\\script.sh")
+  #custom_data = file("C:\\Users\\pupadhyay23\\OneDrive - DXC Production\\Documents\\Zoom\\Python Practice\\Terraform\\script.sh")
+  connection {
+    type     = "ssh"
+    user     = self.admin_username
+    password = self.admin_password
+    host     = azurerm_public_ip.PubIP.ip_address
+  }
+  //Installing maven, git, java and jenkins
+  provisioner "remote-exec" {
+    inline = [
+      "sudo cd /opt",
+      "sudo wget https://dlcdn.apache.org/maven/maven-3/3.8.6/binaries/$var.mvnversion",
+      "sudo tar -xf $var.mvnversion",
+      "sudo yum install -y git",
+      "sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo",
+      "sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key",
+      "sudo yum upgrade -y",
+      "sudo yum install -y java-11-openjdk",
+      "sudo yum install -y jenkins",
+      "sudo systemctl daemon-reload",
+      "sudo systemctl start jenkins",
+    ]
+  }
+  #copying jenkins backup file
+  provisioner "file" {
+    source      = "C:\\Users\\pupadhyay23\\Downloads\\backup_20221029_1037.zip"
+    destination = "/tmp"
+  }
 
 }
 
@@ -66,7 +93,7 @@ resource "azurerm_network_security_group" "nsg-linux" {
   name                = "nsg-linux"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  depends_on = [azurerm_subnet.subnet,azurerm_network_interface.vnic]
+  depends_on          = [azurerm_subnet.subnet, azurerm_network_interface.vnic]
   security_rule = [
     {
       access                                     = "Allow"
